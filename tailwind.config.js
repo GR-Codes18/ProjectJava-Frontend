@@ -2,8 +2,7 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "./src/pages/auth/LoginPage.tsx",
+    "./src/**/*.{js,ts,jsx,tsx}", // <--- Esta línea es crucial
   ],
   theme: {
     extend: {},

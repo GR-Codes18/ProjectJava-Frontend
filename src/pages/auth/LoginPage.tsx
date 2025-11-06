@@ -42,6 +42,12 @@ export default function LoginPage() {
         <button type="submit" className="bg-blue-500 text-white w-full py-2 rounded">
           Entrar
         </button>
+        <p className="text-center text-sm mt-3">
+          ¿No tienes cuenta?{' '}
+          <a onClick={() => navigate('/register')} className="text-blue-600 hover:underline cursor-pointer">
+            Regístrate aquí
+          </a>
+        </p>
       </form>
     </div>
   );
