@@ -1,35 +1,42 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"; // <--- 1. Importa Navigate
+import { AuthProvider } from "@/context/AuthContext";
+import LoginPage from "@/pages/auth/LoginPage";
+import Dashboard from "@/pages/admin/Dashboard";
+import VotarPage from "@/pages/votante/VotarPage";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
-function App() {
-  const [count, setCount] = useState(0)
 
+export default function App() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* 2. Añade esta línea para redirigir la raíz al login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
 
-export default App
+          <Route path="/login" element={<LoginPage />} />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute role="admin">
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/votar"
+            element={
+              <ProtectedRoute role="votante">
+                <VotarPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="*" element={<div>4S04 Página no encontrada</div>} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
