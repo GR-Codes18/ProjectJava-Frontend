@@ -1,19 +1,20 @@
-import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
-export const ProtectedRoute = ({
-  children,
-  role,
-}: {
-  children: React.ReactElement;
-  role?: string;
-}) => {
-  const { user, role: userRole, loading } = useAuth();
+export function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
+  const { user, loading } = useAuth();
 
-  if (loading) return <div className="text-center mt-10">Cargando...</div>;
+  if (loading) return <div>Cargando...</div>;
+
+  // 🚫 Si no hay usuario, lo enviamos al login
   if (!user) return <Navigate to="/login" replace />;
-  if (role && userRole !== role) return <Navigate to="/" replace />;
 
-  return children;
-};
+  // 🚫 Si hay un rol definido y no coincide, redirigimos según rol
+  if (role && user.user_metadata?.rol !== role) {
+    if (user.user_metadata?.rol === "admin") return <Navigate to="/admin/dashboard" replace />;
+    if (user.user_metadata?.rol === "votante") return <Navigate to="/votante/portal" replace />;
+  }
+
+  // ✅ Si todo está OK
+  return <>{children}</>;
+}

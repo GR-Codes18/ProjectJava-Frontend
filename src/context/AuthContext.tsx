@@ -1,113 +1,96 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import type { ReactNode } from "react"; // ✅ IMPORTAR ReactNode COMO TYPE
+import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/services/supabaseClient";
 
-// 🔹 Interfaz del contexto de autenticación
 interface AuthContextType {
   user: any;
   role: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  register: (email: string, password: string, nombre: string, dni: string) => Promise<void>;
 }
 
-// 🔹 Crear contexto
 const AuthContext = createContext<AuthContextType>({
   user: null,
   role: null,
   loading: true,
   login: async () => {},
   logout: async () => {},
+  register: async () => {},
 });
 
-// 🔹 Proveedor de autenticación
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Cargar sesión activa al iniciar
-  useEffect(() => {
-    const getSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) console.error("Error obteniendo sesión:", error.message);
-      setUser(data.session?.user ?? null);
-
-      if (data.session?.user) {
-        await fetchUserRole(data.session.user.id);
-      }
-
-      setLoading(false);
-    };
-
-    getSession();
-
-    // Escuchar cambios de sesión (login/logout)
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchUserRole(session.user.id);
-        } else {
-          setRole(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  // 🔹 Obtener rol del usuario desde una tabla `usuarios`
-  const fetchUserRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("usuarios")
-      .select("rol")
-      .eq("id_auth", userId)
-      .single();
-
-    if (error) {
-      console.warn("No se pudo obtener rol del usuario:", error.message);
-      setRole(null);
-    } else {
-      setRole(data?.rol || null);
-    }
+  // Obtener rol desde metadata
+  const getRoleFromMetadata = (currentUser: any): string | null => {
+    return currentUser?.user_metadata?.rol || null;
   };
 
-  // 🔹 Función de login
+  useEffect(() => {
+    const getSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      const currentUser = data.session?.user ?? null;
+      setUser(currentUser);
+      setRole(getRoleFromMetadata(currentUser));
+      setLoading(false);
+    };
+    getSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      setRole(getRoleFromMetadata(currentUser));
+      setLoading(false);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   const login = async (email: string, password: string) => {
-    setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-
-    if (error) {
-      console.error("Error al iniciar sesión:", error.message);
-      alert("Credenciales incorrectas o usuario no encontrado.");
-    } else {
-      setUser(data.user);
-      await fetchUserRole(data.user.id);
-    }
-
-    setLoading(false);
+    if (error) throw error;
   };
 
-  // 🔹 Función de logout
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setRole(null);
   };
 
+  // 📌 REGISTRO con nombre y DNI
+  const register = async (email: string, password: string, nombre: string, dni: string) => {
+    const redirectUrl =
+      import.meta.env.MODE === "development"
+        ? "http://localhost:5173/login"
+        : "https://bitelapp.vercel.app/login";
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          nombre,
+          dni,
+          rol: "votante", // puedes ajustar esto según tu lógica
+        },
+      },
+    });
+
+    if (error) throw error;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, role, loading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Hook para acceder fácilmente al contexto
 export const useAuth = () => useContext(AuthContext);
